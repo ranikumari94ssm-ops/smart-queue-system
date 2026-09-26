@@ -1,6 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
+const queueRoutes = require("./routes/queues");
+const counterRoutes = require("./routes/counters");
+const serviceRoutes = require("./routes/services");
+const authRoutes = require("./routes/auth");
+const staffRoutes = require("./routes/staff");
+const analyticsRoutes = require("./routes/analytics");
 
 const app = express();
 
@@ -28,7 +34,23 @@ app.get("/test-db", async (req, res) => {
     }
 });
 
-const PORT = 5000;
+app.get("/health", (req, res) => {
+    res.json({ status: "ok" });
+});
+
+app.use("/api/queues", queueRoutes);
+app.use("/api/counters", counterRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/staff", staffRoutes);
+app.use("/api/analytics", analyticsRoutes);
+
+app.use((error, req, res, next) => {
+    console.error(error);
+    res.status(500).json({ message: "An unexpected server error occurred" });
+});
+
+const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

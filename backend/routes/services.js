@@ -1,0 +1,6 @@
+const express=require("express"); const pool=require("../db"); const router=express.Router();
+async function end(req,res,next,status) {
+ const id=Number(req.params.serviceId); if(!Number.isInteger(id)||id<1) return res.status(400).json({message:"serviceId must be a positive integer"}); const client=await pool.connect();
+ try { await client.query("BEGIN"); const service=await client.query("SELECT * FROM services WHERE id=$1 FOR UPDATE",[id]); if(!service.rows[0]) {await client.query("ROLLBACK");return res.status(404).json({message:"Service not found"});} if(service.rows[0].status!=="in_progress"){await client.query("ROLLBACK");return res.status(409).json({message:"Service has already ended"});} const updated=await client.query("UPDATE services SET status=$1,ended_at=NOW() WHERE id=$2 RETURNING *",[status,id]); await client.query("UPDATE tickets SET status=$1,service_ended_at=NOW() WHERE id=$2",[status,service.rows[0].ticket_id]); await client.query("COMMIT");res.json({service:updated.rows[0]}); } catch(error){await client.query("ROLLBACK");next(error);} finally{client.release();}
+}
+router.post("/:serviceId/complete",(req,res,next)=>end(req,res,next,"completed")); router.post("/:serviceId/cancel",(req,res,next)=>end(req,res,next,"cancelled")); module.exports=router;
